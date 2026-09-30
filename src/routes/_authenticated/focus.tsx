@@ -10,7 +10,7 @@ import { streak } from "@/lib/stats";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/focus")({
-  validateSearch: (s: Record<string, unknown>) => ({ task: typeof s.task === "string" ? s.task : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ task: typeof s["task"] === "string" ? (s["task"] as string) : undefined }),
   head: () => ({ meta: [{ title: "Focus — FocusStudy" }, { name: "description", content: "Distraction-free focus sessions." }, { property: "og:title", content: "Focus — FocusStudy" }, { property: "og:description", content: "Distraction-free focus sessions." }] }),
   component: FocusPage,
 });
@@ -107,7 +107,7 @@ function FocusPage() {
         <h1 className="text-2xl font-semibold">Ready to Focus?</h1>
         {CHECKS.map((c, i) => (
           <label key={c} className="flex items-center gap-3 rounded-xl border p-3 text-sm">
-            <Checkbox checked={checks[i]} onCheckedChange={(v) => setChecks(checks.map((x, j) => (j === i ? !!v : x)))} /> {c}
+            <Checkbox checked={!!checks[i]} onCheckedChange={(v) => setChecks(checks.map((x, j) => (j === i ? !!v : x)))} /> {c}
           </label>
         ))}
         <p className="text-xs text-muted-foreground">Note: a web app can't block other apps or websites on your device. Focus Shield goes full-screen, hides everything else and warns you if you leave.</p>

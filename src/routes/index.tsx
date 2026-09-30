@@ -89,7 +89,7 @@ function Home() {
             </p>
           </div>
           <Button asChild size="lg" variant="secondary" className="h-14 rounded-xl text-base font-semibold">
-            <Link to="/focus" search={nextTask ? { task: nextTask.id } : {}}><Play className="fill-current" /> Start Focus Session</Link>
+            <Link to="/focus" search={{ task: nextTask?.id }}><Play className="fill-current" /> Start Focus Session</Link>
           </Button>
         </section>
       </div>

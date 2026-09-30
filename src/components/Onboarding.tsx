@@ -146,7 +146,7 @@ export function Onboarding({ profile }: { profile: Profile }) {
     },
   ];
 
-  const cur = steps[step];
+  const cur = steps[step]!;
   const finish = async () => {
     try {
       if (sample) await loadSampleData();

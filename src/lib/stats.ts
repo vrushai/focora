@@ -9,7 +9,7 @@ export const LEVELS = [
 ];
 
 export function levelFor(points: number) {
-  let cur = LEVELS[0];
+  let cur = LEVELS[0]!;
   for (const l of LEVELS) if (points >= l.min) cur = l;
   const next = LEVELS.find((l) => l.min > points);
   const pct = next ? ((points - cur.min) / (next.min - cur.min)) * 100 : 100;

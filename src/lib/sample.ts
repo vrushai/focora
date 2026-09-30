@@ -23,7 +23,7 @@ export async function loadSampleData() {
     for (let i = 0; i < count; i++) {
       const len = i === 0 ? 50 : 25;
       sessions.push({
-        subject: subjects[(d + i) % subjects.length],
+        subject: subjects[(d + i) % subjects.length]!,
         planned_min: len,
         actual_min: len,
         completed: true,
