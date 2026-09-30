@@ -14,13 +14,384 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      doubts: {
+        Row: {
+          answer: Json
+          created_at: string
+          id: string
+          question: string
+          subject: string
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          answer?: Json
+          created_at?: string
+          id?: string
+          question: string
+          subject?: string
+          topic?: string
+          user_id?: string
+        }
+        Update: {
+          answer?: Json
+          created_at?: string
+          id?: string
+          question?: string
+          subject?: string
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      exams: {
+        Row: {
+          created_at: string
+          exam_date: string
+          id: string
+          is_sample: boolean
+          name: string
+          progress: number
+          subject: string
+          topics: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exam_date: string
+          id?: string
+          is_sample?: boolean
+          name: string
+          progress?: number
+          subject?: string
+          topics?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          exam_date?: string
+          id?: string
+          is_sample?: boolean
+          name?: string
+          progress?: number
+          subject?: string
+          topics?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      focus_sessions: {
+        Row: {
+          actual_min: number
+          completed: boolean
+          id: string
+          is_sample: boolean
+          planned_min: number
+          points: number
+          started_at: string
+          subject: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          actual_min?: number
+          completed?: boolean
+          id?: string
+          is_sample?: boolean
+          planned_min: number
+          points?: number
+          started_at?: string
+          subject?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Update: {
+          actual_min?: number
+          completed?: boolean
+          id?: string
+          is_sample?: boolean
+          planned_min?: number
+          points?: number
+          started_at?: string
+          subject?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "focus_sessions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          display_name: string
+          group_id: string
+          status: string
+          status_at: string
+          user_id: string
+        }
+        Insert: {
+          display_name?: string
+          group_id: string
+          status?: string
+          status_at?: string
+          user_id?: string
+        }
+        Update: {
+          display_name?: string
+          group_id?: string
+          status?: string
+          status_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_task_done: {
+        Row: {
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          task_id: string
+          user_id?: string
+        }
+        Update: {
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_task_done_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "group_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_tasks: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string
+          id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          group_id: string
+          id?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_tasks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          category?: string
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          read?: boolean
+          title: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          custom_focus_min: number
+          daily_goal_min: number
+          focus_preset: string
+          grade: string
+          id: string
+          leave_warning: boolean
+          name: string
+          onboarded: boolean
+          points: number
+          problem: string
+          reminder_style: string
+          reminders_enabled: boolean
+          study_hours: string
+          subjects: string[]
+        }
+        Insert: {
+          created_at?: string
+          custom_focus_min?: number
+          daily_goal_min?: number
+          focus_preset?: string
+          grade?: string
+          id: string
+          leave_warning?: boolean
+          name?: string
+          onboarded?: boolean
+          points?: number
+          problem?: string
+          reminder_style?: string
+          reminders_enabled?: boolean
+          study_hours?: string
+          subjects?: string[]
+        }
+        Update: {
+          created_at?: string
+          custom_focus_min?: number
+          daily_goal_min?: number
+          focus_preset?: string
+          grade?: string
+          id?: string
+          leave_warning?: boolean
+          name?: string
+          onboarded?: boolean
+          points?: number
+          problem?: string
+          reminder_style?: string
+          reminders_enabled?: boolean
+          study_hours?: string
+          subjects?: string[]
+        }
+        Relationships: []
+      }
+      study_groups: {
+        Row: {
+          created_at: string
+          goal: string
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal?: string
+          id?: string
+          invite_code?: string
+          name: string
+          owner_id?: string
+        }
+        Update: {
+          created_at?: string
+          goal?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string
+          due_at: string | null
+          duration_min: number
+          id: string
+          is_sample: boolean
+          notes: string
+          priority: string
+          reminder_min: number | null
+          repeat: string
+          subject: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_at?: string | null
+          duration_min?: number
+          id?: string
+          is_sample?: boolean
+          notes?: string
+          priority?: string
+          reminder_min?: number | null
+          repeat?: string
+          subject?: string
+          title: string
+          user_id?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_at?: string | null
+          duration_min?: number
+          id?: string
+          is_sample?: boolean
+          notes?: string
+          priority?: string
+          reminder_min?: number | null
+          repeat?: string
+          subject?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_group_member: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
+      join_group_by_code: {
+        Args: { _code: string; _name: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
