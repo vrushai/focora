@@ -105,7 +105,7 @@ export function Onboarding({ profile }: { profile: Profile }) {
           <div>
             <Label>Reminder style</Label>
             <div className="mt-2 flex flex-wrap gap-2">
-              {[["gentle", "Gentle"], ["standard", "Standard"], ["strict", "Keep me accountable"]].map(([v, l]) => (
+              {([["gentle", "Gentle"], ["standard", "Standard"], ["strict", "Keep me accountable"]] as const).map(([v, l]) => (
                 <Chip key={v} on={f.reminder_style === v} onClick={() => setF({ ...f, reminder_style: v })}>{l}</Chip>
               ))}
             </div>
