@@ -62,7 +62,7 @@ export function TaskItem({ task, onEdit, compact }: { task: Task; onEdit?: (t: T
           <span className="flex items-center gap-1"><Clock className="size-3.5" />{task.duration_min} min</span>
           {task.due_at && (
             <span className={cn(b === "overdue" && "font-medium text-destructive")}>
-              Due {b === "today" || b === "overdue" && new Date(task.due_at).toDateString() === new Date().toDateString()
+              Due {new Date(task.due_at).toDateString() === new Date().toDateString()
                 ? format(new Date(task.due_at), "h:mm a")
                 : format(new Date(task.due_at), "EEE d MMM, h:mm a")}
             </span>
