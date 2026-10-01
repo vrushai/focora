@@ -47,7 +47,7 @@ function SettingsPage() {
     save({ subjects: has ? profile.subjects.filter((x) => x !== s) : [...profile.subjects, s] });
   };
   const askPerm = async () => {
-    if (typeof Notification === "undefined") return toast("Your browser doesn't support notifications — you'll get in-app reminders instead.");
+    if (typeof Notification === "undefined") { toast("Your browser doesn't support notifications — you'll get in-app reminders instead."); return; }
     const p = await Notification.requestPermission();
     setPerm(p);
     toast(p === "granted" ? "Browser notifications enabled" : "Permission not granted — in-app reminders will still work.");

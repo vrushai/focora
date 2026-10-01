@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/planner")({
   component: PlannerPage,
 });
 
-type Block = { start: Date; end: Date; kind: "study" | "break"; label: string; subject?: string; taskId?: string };
+type Block = { start: Date; end: Date; kind: "study" | "break"; label: string; subject?: string | undefined; taskId?: string | undefined };
 const PRI: Record<string, number> = { high: 3, medium: 2, low: 1 };
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -55,7 +55,7 @@ function PlannerPage() {
       .filter((t) => picked.has(t.id)).sort((a, b) => score(b) - score(a))
       .map((t) => ({ label: t.title, subject: t.subject, min: t.duration_min, taskId: t.id }));
     extra.forEach((s) => items.push({ label: `${s} revision${examSoon.has(s) ? " (exam soon)" : ""}`, subject: s, min: 30 }));
-    if (!items.length) return toast.error("Pick at least one task or subject.");
+    if (!items.length) { toast.error("Pick at least one task or subject."); return; }
     const out: Block[] = [];
     for (const it of items) {
       let remaining = it.min;

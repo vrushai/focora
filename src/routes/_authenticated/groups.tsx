@@ -39,14 +39,14 @@ function GroupsPage() {
   const createGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     const { data, error } = await supabase.from("study_groups").insert({ name: name.trim(), goal: goal.trim() }).select().single();
-    if (error || !data) return toast.error(error?.message ?? "Could not create group");
+    if (error || !data) { toast.error(error?.message ?? "Could not create group"); return; }
     await supabase.from("group_members").insert({ group_id: data.id, display_name: profile?.name || "Student" });
     qc.invalidateQueries({ queryKey: ["groups"] }); setSel(data.id); setOpen(null); setName(""); setGoal("");
   };
   const join = async (e: React.FormEvent) => {
     e.preventDefault();
     const { data, error } = await supabase.rpc("join_group_by_code", { _code: code, _name: profile?.name || "Student" });
-    if (error) return toast.error("That invite code doesn't match a group.");
+    if (error) { toast.error("That invite code doesn't match a group."); return; }
     qc.invalidateQueries({ queryKey: ["groups"] }); setSel(data as string); setOpen(null); setCode("");
     toast.success("Joined the group");
   };

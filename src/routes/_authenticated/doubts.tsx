@@ -35,13 +35,13 @@ function DoubtsPage() {
   const [subject, setSubject] = useState(profile?.subjects?.[0] ?? "General");
   const [topic, setTopic] = useState("");
   const [answer, setAnswer] = useState<DoubtAnswer | null>(null);
-  const [current, setCurrent] = useState<{ question: string; subject: string; topic: string; id?: string } | null>(null);
+  const [current, setCurrent] = useState<{ question: string; subject: string; topic: string; id?: string | undefined } | null>(null);
   const [loading, setLoading] = useState<Mode | null>(null);
   const [search, setSearch] = useState("");
 
   const ask = async (mode: Mode) => {
     const base = mode === "default" ? { question: q.trim(), subject, topic: topic.trim() } : current;
-    if (!base || base.question.length < 3) return toast.error("Type your question first.");
+    if (!base || base.question.length < 3) { toast.error("Type your question first."); return; }
     setLoading(mode);
     try {
       const prev = mode !== "default" && answer ? `${answer.simple}\n${answer.steps.join("\n")}\n${answer.example}` : undefined;
