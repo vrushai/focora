@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { useDoubts, useProfile, type Doubt } from "@/lib/data";
 import { solveDoubt, type DoubtAnswer } from "@/lib/doubt.functions";
 import { SUBJECTS } from "@/components/Onboarding";
@@ -48,7 +49,7 @@ function DoubtsPage() {
       const res = await solve({ data: { ...base, grade: profile?.grade ?? "", mode, previous: prev } });
       setAnswer(res);
       if (mode === "default") {
-        const { data } = await supabase.from("doubts").insert({ ...base, answer: res }).select().single();
+        const { data } = await supabase.from("doubts").insert({ question: base.question, subject: base.subject, topic: base.topic, answer: res as unknown as Json }).select().single();
         setCurrent({ ...base, id: data?.id });
       } else if (current?.id) {
         await supabase.from("doubts").update({ answer: res }).eq("id", current.id);
