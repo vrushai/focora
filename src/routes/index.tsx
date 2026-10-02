@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Flame, Play, Plus, Sparkles, GraduationCap, Users, CheckCircle2, Clock, Target } from "lucide-react";
+import { Flame, Play, Plus, Sparkles, GraduationCap, Users, CheckCircle2, Clock, Target, CalendarDays } from "lucide-react";
+import { format } from "date-fns";
 import { Shell, EmptyState } from "@/components/Shell";
 import { TaskItem, TaskDialog } from "@/components/tasks";
 import { Ring } from "@/components/Ring";
@@ -45,7 +46,18 @@ function Home() {
   const lvl = levelFor(profile.points);
   const totalMin = s.reduce((a, x) => a + x.actual_min, 0);
   const completedTasks = (tasks.data ?? []).filter((t) => t.completed_at).length;
-  const upcomingExams = (exams.data ?? []).filter((e) => daysUntil(e.exam_date) >= 0).slice(0, 2);
+  const upcomingExams = (exams.data ?? []).filter((e) => daysUntil(e.exam_date) >= 0).slice(0, 3);
+  const todayStr = new Date().toDateString();
+  const schedule = [
+    ...(tasks.data ?? [])
+      .filter((t) => t.due_at && new Date(t.due_at).toDateString() === todayStr)
+      .map((t) => ({ id: t.id, at: +new Date(t.due_at!), time: format(new Date(t.due_at!), "h:mm a"), label: `${t.subject} — ${t.title}`, kind: "task" as const, done: !!t.completed_at, late: !t.completed_at && +new Date(t.due_at!) < Date.now() })),
+    ...(exams.data ?? []).filter((e) => daysUntil(e.exam_date) === 0).map((e) => ({ id: e.id, at: 0, time: "All day", label: `Exam: ${e.name}`, kind: "exam" as const, done: false, late: false })),
+  ].sort((a, b) => a.at - b.at);
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    return { key: d.toDateString(), label: format(d, "EEEEE"), min: studiedOn(s, d), today: i === 6 };
+  });
 
   const tip: Record<string, string> = {
     "I get distracted easily": "Tip: turn on the Focus Shield before each session.",
@@ -99,6 +111,64 @@ function Home() {
         <Stat icon={<Clock className="size-4 text-primary" />} label="Total study" value={fmtMin(totalMin)} />
         <Stat icon={<Target className="size-4 text-primary" />} label="Sessions" value={String(s.filter((x) => x.completed).length)} />
         <Stat icon={<CheckCircle2 className="size-4 text-success" />} label="Tasks done" value={String(completedTasks)} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="card-surface p-4 lg:col-span-1">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4 text-primary" /> Today's schedule</p>
+            <Link to="/planner" className="text-xs font-medium text-primary">Plan day</Link>
+          </div>
+          {schedule.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing scheduled for today.</p>
+          ) : (
+            <ol className="relative space-y-3 border-l pl-4">
+              {schedule.map((it) => (
+                <li key={it.id} className="relative">
+                  <span className={`absolute -left-[21px] top-1.5 size-2.5 rounded-full ${it.kind === "exam" ? "bg-streak" : it.done ? "bg-success" : it.late ? "bg-destructive" : "bg-primary"}`} />
+                  <p className="text-xs tabular text-muted-foreground">{it.time}</p>
+                  <p className={`text-sm font-medium leading-snug ${it.done ? "line-through opacity-60" : ""}`}>{it.label}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <section className="card-surface p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="flex items-center gap-2 text-sm font-semibold"><GraduationCap className="size-4 text-primary" /> Upcoming exams</p>
+            <Link to="/exams" className="text-xs font-medium text-primary">Manage</Link>
+          </div>
+          {upcomingExams.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No exams added yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {upcomingExams.map((e) => {
+                const d = daysUntil(e.exam_date);
+                return (
+                  <div key={e.id}>
+                    <div className="flex justify-between gap-2 text-sm"><span className="truncate font-medium">{e.name}</span><span className={d <= 3 ? "shrink-0 font-semibold text-destructive" : "shrink-0 text-muted-foreground"}>{d === 0 ? "Today" : `${d}d left`}</span></div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${e.progress}%` }} /></div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="card-surface p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Flame className="size-4 text-streak" /> Focus streak</p>
+          <p className="mt-2 font-display text-3xl font-semibold tabular">{st}<span className="ml-1 text-base font-normal text-muted-foreground">day{st === 1 ? "" : "s"}</span></p>
+          <div className="mt-3 grid grid-cols-7 gap-1.5">
+            {week.map((w) => (
+              <div key={w.key} className="flex flex-col items-center gap-1">
+                <div className={`flex size-8 items-center justify-center rounded-full text-[10px] font-semibold ${w.min > 0 ? "bg-streak text-primary-foreground" : "bg-muted text-muted-foreground"} ${w.today ? "ring-2 ring-primary/40" : ""}`}>{w.min > 0 ? <Flame className="size-3.5" /> : ""}</div>
+                <span className="text-[10px] text-muted-foreground">{w.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">{done > 0 ? "You've studied today — streak safe." : "Study today to keep your streak alive."}</p>
+        </section>
       </div>
 
       <div className="grid gap-6 md:grid-cols-5">
