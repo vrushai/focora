@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { AlertTriangle, GripVertical, Plus, Search } from "lucide-react";
+import { SortableTaskList, byManualOrder } from "@/components/SortableTasks";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader, EmptyState } from "@/components/Shell";
@@ -48,11 +49,13 @@ function TasksPage() {
     (groups[b === "someday" ? "upcoming" : b] ??= []).push(t);
   }
   groups.completed.sort((a, b) => +new Date(b.completed_at!) - +new Date(a.completed_at!));
-  (["today", "upcoming", "overdue"] as const).forEach((k) => groups[k].sort(sortTasks));
+  (["today", "upcoming", "overdue"] as const).forEach((k) => groups[k].sort(byManualOrder(sortTasks)));
   const list = groups[tab];
   const cur = TABS.find((t) => t.v === tab)!;
   const pending = raw.filter((t) => !t.completed_at);
   const todayMin = groups.today.reduce((a, t) => a + t.duration_min, 0);
+  const edit = (x: Task) => { setEditing(x); setOpen(true); };
+  const showOverdueBlock = tab === "today" && groups.overdue.length > 0;
 
   return (
     <div>
@@ -83,13 +86,30 @@ function TasksPage() {
           ))}
         </TabsList>
       </Tabs>
-      <div className="mt-4 space-y-2">
+
+      {showOverdueBlock && (
+        <section className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-3">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <p className="flex items-center gap-2 text-sm font-semibold text-destructive"><AlertTriangle className="size-4" /> Overdue · {groups.overdue.length}</p>
+            <button className="text-xs font-medium text-destructive underline-offset-2 hover:underline" onClick={() => setTab("overdue")}>See all</button>
+          </div>
+          <SortableTaskList tasks={groups.overdue} onEdit={edit} />
+        </section>
+      )}
+
+      {tab !== "completed" && list.length > 1 && (
+        <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground"><GripVertical className="size-3.5" /> Drag tasks to set your own priority order</p>
+      )}
+      <div className="mt-3 space-y-2">
+        {showOverdueBlock && <p className="px-1 pt-1 text-sm font-semibold">Today</p>}
         {tasks.isLoading ? (
           [0, 1, 2].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)
         ) : list.length === 0 ? (
           <EmptyState title={cur.empty[0]} text={cur.empty[1]} action={tab !== "completed" ? <Button className="rounded-xl" onClick={() => { setEditing(null); setOpen(true); }}><Plus /> Add task</Button> : undefined} />
+        ) : tab === "completed" ? (
+          list.map((t) => <TaskItem key={t.id} task={t} onEdit={edit} />)
         ) : (
-          list.map((t) => <TaskItem key={t.id} task={t} onEdit={(x) => { setEditing(x); setOpen(true); }} />)
+          <SortableTaskList tasks={list} onEdit={edit} />
         )}
       </div>
       <TaskDialog open={open} onOpenChange={setOpen} task={editing} />
