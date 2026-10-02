@@ -55,6 +55,7 @@ function FocusPage() {
   }, [phase, profile.leave_warning]);
 
   const start = () => {
+    if (preset === "custom" && custom !== profile.custom_focus_min) void supabase.from("profiles").update({ custom_focus_min: custom }).eq("id", profile.id);
     saved.current = false; setTotal(mins * 60); setLeft(mins * 60); setPaused(false); setAway(0); setPhase("focus");
     document.documentElement.requestFullscreen?.().catch(() => {});
   };
@@ -130,7 +131,30 @@ function FocusPage() {
           </button>
         ))}
       </div>
-      {preset === "custom" && <Input type="number" min={1} max={240} value={custom} onChange={(e) => setCustom(Number(e.target.value) || 1)} className="h-12" />}
+      {preset === "custom" && (
+        <div className="card-surface space-y-4 p-4">
+          <p className="text-sm font-semibold">Custom timer</p>
+          <div className="flex items-center justify-center gap-4">
+            <Button type="button" variant="outline" size="icon" className="size-12 rounded-full text-lg" aria-label="5 minutes less" onClick={() => setCustom((c) => Math.max(5, c - 5))}>−</Button>
+            <div className="text-center">
+              <p className="font-display text-5xl font-semibold tabular">{custom}</p>
+              <p className="text-xs text-muted-foreground">minutes</p>
+            </div>
+            <Button type="button" variant="outline" size="icon" className="size-12 rounded-full text-lg" aria-label="5 minutes more" onClick={() => setCustom((c) => Math.min(240, c + 5))}>+</Button>
+          </div>
+          <input type="range" min={5} max={180} step={5} value={Math.min(custom, 180)} onChange={(e) => setCustom(Number(e.target.value))} className="w-full accent-[var(--primary)]" aria-label="Focus length" />
+          <div className="flex flex-wrap justify-center gap-2">
+            {[10, 15, 20, 30, 40, 45, 60, 90, 120].map((m) => (
+              <button key={m} type="button" onClick={() => setCustom(m)} className={cn("rounded-full border px-3 py-1.5 text-sm tabular", custom === m ? "border-primary bg-primary text-primary-foreground" : "bg-card")}>{m}m</button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">Exact minutes</span>
+            <Input type="number" min={1} max={240} value={custom} onChange={(e) => setCustom(Math.min(240, Math.max(1, Number(e.target.value) || 1)))} className="h-10 w-24 text-center" />
+          </div>
+          <p className="text-center text-xs text-muted-foreground">Ends around {new Date(Date.now() + custom * 60000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
+        </div>
+      )}
       <Button size="lg" className="h-14 w-full rounded-xl text-base" onClick={() => setPhase("shield")}>▶ Start Focus</Button>
     </div>
   );

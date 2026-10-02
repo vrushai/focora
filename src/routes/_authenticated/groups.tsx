@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Copy, Plus, Users, LogOut, Target, Trash2, Play } from "lucide-react";
+import { format } from "date-fns";
+import { Copy, Plus, Users, LogOut, Target, Trash2, Play, MessageCircle, Send } from "lucide-react";
+import { PriorityBadge } from "@/components/tasks";
 import { PageHeader, EmptyState } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +99,11 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [newTask, setNewTask] = useState("");
+  const [due, setDue] = useState("");
+  const [assignee, setAssignee] = useState("");
+  const [prio, setPrio] = useState("medium");
   const [goal, setGoal] = useState(group.goal);
+  const today = format(new Date(), "yyyy-MM-dd");
   const data = useQuery({
     queryKey: ["group", group.id],
     refetchInterval: 15000,
@@ -122,7 +128,14 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
   const groupPct = totalPossible ? Math.round((done.length / totalPossible) * 100) : 0;
 
   const setStatus = async (s: string) => { await supabase.from("group_members").update({ status: s, status_at: new Date().toISOString() }).eq("group_id", group.id).eq("user_id", user!.id); inv(); };
-  const addTask = async (e: React.FormEvent) => { e.preventDefault(); if (!newTask.trim()) return; await supabase.from("group_tasks").insert({ group_id: group.id, title: newTask.trim() }); setNewTask(""); inv(); };
+  const addTask = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!newTask.trim()) return;
+    const { error } = await supabase.from("group_tasks").insert({ group_id: group.id, title: newTask.trim(), due_date: due || null, assigned_to: assignee || null, priority: prio });
+    if (error) { toast.error("Couldn't add task"); return; }
+    setNewTask(""); setDue(""); setAssignee(""); setPrio("medium"); inv();
+  };
+  const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const sortedTasks = [...tasks].sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || (rank[a.priority] ?? 1) - (rank[b.priority] ?? 1));
   const toggleDone = async (taskId: string, isDone: boolean) => {
     if (isDone) await supabase.from("group_task_done").delete().eq("task_id", taskId).eq("user_id", user!.id);
     else await supabase.from("group_task_done").insert({ task_id: taskId });
@@ -171,18 +184,42 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
       </div>
 
       <div className="rounded-2xl border bg-card p-4">
-        <p className="mb-3 font-semibold">Shared tasks</p>
-        <form onSubmit={addTask} className="mb-3 flex gap-2"><Input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Add a shared task" className="h-11" /><Button type="submit" className="h-11 rounded-xl"><Plus /></Button></form>
+        <p className="mb-1 font-semibold">Shared task plan</p>
+        <p className="mb-3 text-xs text-muted-foreground">Plan who does what and by when. Everyone ticks off their own progress.</p>
+        <form onSubmit={addTask} className="mb-4 space-y-2">
+          <Input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="e.g. Revise Chapter 3 notes" className="h-11" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="h-11" aria-label="Due date" />
+            <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="h-11 rounded-md border bg-background px-2 text-sm" aria-label="Assign to">
+              <option value="">Everyone</option>
+              {members.map((m) => <option key={m.user_id} value={m.user_id}>{m.user_id === user?.id ? "Me" : m.display_name}</option>)}
+            </select>
+            <select value={prio} onChange={(e) => setPrio(e.target.value)} className="h-11 rounded-md border bg-background px-2 text-sm" aria-label="Priority">
+              <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+            </select>
+            <Button type="submit" className="h-11 rounded-xl"><Plus /> Add</Button>
+          </div>
+        </form>
         {tasks.length === 0 ? <p className="text-sm text-muted-foreground">No shared tasks yet.</p> : (
           <div className="space-y-2">
-            {tasks.map((t) => {
+            {sortedTasks.map((t) => {
               const doneBy = done.filter((d) => d.task_id === t.id);
               const mine = doneBy.some((d) => d.user_id === user?.id);
+              const who = t.assigned_to ? members.find((m) => m.user_id === t.assigned_to) : null;
+              const target = t.assigned_to ? 1 : members.length;
+              const late = t.due_date && t.due_date < today && doneBy.length < target;
               return (
-                <div key={t.id} className="flex items-center gap-3 rounded-xl border p-3">
-                  <Checkbox checked={mine} onCheckedChange={() => toggleDone(t.id, mine)} className="size-5" />
-                  <span className={cn("min-w-0 flex-1 text-sm", mine && "line-through opacity-60")}>{t.title}</span>
-                  <span className="text-xs text-muted-foreground">{doneBy.length}/{members.length} done</span>
+                <div key={t.id} className="flex items-start gap-3 rounded-xl border p-3">
+                  <Checkbox checked={mine} onCheckedChange={() => toggleDone(t.id, mine)} className="mt-0.5 size-5" />
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("text-sm font-medium", mine && "line-through opacity-60")}>{t.title}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <PriorityBadge p={t.priority} />
+                      <span>{who ? (who.user_id === user?.id ? "Assigned to you" : `Assigned to ${who.display_name}`) : "Everyone"}</span>
+                      {t.due_date && <span className={cn(late && "font-medium text-destructive")}>Due {format(new Date(`${t.due_date}T00:00`), "EEE d MMM")}</span>}
+                      <span>{doneBy.length}/{target} done</span>
+                    </div>
+                  </div>
                   {t.created_by === user?.id && <Button size="icon" variant="ghost" className="size-8 rounded-full" aria-label="Delete task" onClick={() => delTask(t.id)}><Trash2 className="size-4" /></Button>}
                 </div>
               );
@@ -191,7 +228,65 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
         )}
       </div>
 
+      <GroupChat groupId={group.id} myName={me?.display_name ?? "Student"} />
+
       <Button variant="ghost" className="w-full text-destructive" onClick={leave}><LogOut />{group.owner_id === user?.id ? "Delete group" : "Leave group"}</Button>
+    </div>
+  );
+}
+
+function GroupChat({ groupId, myName }: { groupId: string; myName: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+  const msgs = useQuery({
+    queryKey: ["group-chat", groupId],
+    refetchInterval: 4000,
+    queryFn: async () => (await supabase.from("group_messages").select("*").eq("group_id", groupId).order("created_at", { ascending: false }).limit(100)).data?.reverse() ?? [],
+  });
+  const list = msgs.data ?? [];
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest" }); }, [list.length]);
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body || sending) return;
+    setSending(true);
+    const { error } = await supabase.from("group_messages").insert({ group_id: groupId, body: body.slice(0, 1000), display_name: myName });
+    setSending(false);
+    if (error) { toast.error("Message not sent"); return; }
+    setText("");
+    qc.invalidateQueries({ queryKey: ["group-chat", groupId] });
+  };
+  const del = async (id: string) => { await supabase.from("group_messages").delete().eq("id", id); qc.invalidateQueries({ queryKey: ["group-chat", groupId] }); };
+
+  return (
+    <div className="rounded-2xl border bg-card p-4">
+      <p className="mb-3 flex items-center gap-2 font-semibold"><MessageCircle className="size-4 text-primary" /> Group chat</p>
+      <div className="max-h-80 space-y-2 overflow-y-auto rounded-xl bg-muted/40 p-3">
+        {list.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No messages yet — say hi 👋</p> : list.map((m) => {
+          const mine = m.user_id === user?.id;
+          return (
+            <div key={m.id} className={cn("group flex", mine ? "justify-end" : "justify-start")}>
+              <div className={cn("max-w-[80%] rounded-2xl px-3 py-2 text-sm", mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm border bg-card")}>
+                {!mine && <p className="text-[11px] font-semibold text-primary">{m.display_name}</p>}
+                <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                <p className={cn("mt-0.5 flex items-center gap-2 text-[10px]", mine ? "justify-end opacity-70" : "text-muted-foreground")}>
+                  {format(new Date(m.created_at), "h:mm a")}
+                  {mine && <button onClick={() => del(m.id)} className="underline-offset-2 hover:underline">delete</button>}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={endRef} />
+      </div>
+      <form onSubmit={send} className="mt-3 flex gap-2">
+        <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder="Message your group" className="h-11" />
+        <Button type="submit" className="h-11 rounded-xl" disabled={sending || !text.trim()} aria-label="Send"><Send /></Button>
+      </form>
     </div>
   );
 }

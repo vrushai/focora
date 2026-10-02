@@ -159,6 +159,41 @@ export type Database = {
           },
         ]
       }
+      group_messages: {
+        Row: {
+          body: string
+          created_at: string
+          display_name: string
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          display_name?: string
+          group_id: string
+          id?: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          display_name?: string
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_task_done: {
         Row: {
           task_id: string
@@ -184,24 +219,33 @@ export type Database = {
       }
       group_tasks: {
         Row: {
+          assigned_to: string | null
           created_at: string
           created_by: string
+          due_date: string | null
           group_id: string
           id: string
+          priority: string
           title: string
         }
         Insert: {
+          assigned_to?: string | null
           created_at?: string
           created_by?: string
+          due_date?: string | null
           group_id: string
           id?: string
+          priority?: string
           title: string
         }
         Update: {
+          assigned_to?: string | null
           created_at?: string
           created_by?: string
+          due_date?: string | null
           group_id?: string
           id?: string
+          priority?: string
           title?: string
         }
         Relationships: [
@@ -341,6 +385,7 @@ export type Database = {
           priority: string
           reminder_min: number | null
           repeat: string
+          sort_order: number | null
           subject: string
           title: string
           user_id: string
@@ -357,6 +402,7 @@ export type Database = {
           priority?: string
           reminder_min?: number | null
           repeat?: string
+          sort_order?: number | null
           subject?: string
           title: string
           user_id?: string
@@ -373,6 +419,7 @@ export type Database = {
           priority?: string
           reminder_min?: number | null
           repeat?: string
+          sort_order?: number | null
           subject?: string
           title?: string
           user_id?: string

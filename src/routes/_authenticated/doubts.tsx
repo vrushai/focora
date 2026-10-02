@@ -115,7 +115,13 @@ function DoubtsPage() {
               <Section icon={ListOrdered} title="Step by step">
                 <ol className="list-decimal space-y-1.5 pl-5">{answer.steps.map((st, i) => <li key={i}>{st}</li>)}</ol>
               </Section>
+              {!!answer.key_points?.length && (
+                <Section icon={Sparkles} title="Key points & formulas">
+                  <ul className="list-disc space-y-1.5 pl-5">{answer.key_points.map((k, i) => <li key={i}>{k}</li>)}</ul>
+                </Section>
+              )}
               <Section icon={Globe} title="Example"><p>{answer.example}</p></Section>
+              {answer.common_mistake && <Section icon={Lightbulb} title="Common mistake"><p>{answer.common_mistake}</p></Section>}
               <Section icon={HelpCircle} title="Check your understanding"><p className="font-medium">{answer.check_question}</p></Section>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Button variant="default" className="rounded-xl" onClick={() => { toast.success("Great! Keep going."); setAnswer(null); setQ(""); setTopic(""); setCurrent(null); }}>I understand</Button>
