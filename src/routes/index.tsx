@@ -197,24 +197,6 @@ function Home() {
             {lvl.next && <p className="mt-2 text-xs text-muted-foreground">{lvl.next.min - profile.points} pts to {lvl.next.name}</p>}
           </div>
 
-          <div className="card-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold">Upcoming exams</p>
-              <Link to="/exams" className="text-xs font-medium text-primary">Manage</Link>
-            </div>
-            {upcomingExams.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No exams added yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {upcomingExams.map((e) => (
-                  <div key={e.id}>
-                    <div className="flex justify-between text-sm"><span className="font-medium">{e.name}</span><span className="text-muted-foreground">{daysUntil(e.exam_date)}d left</span></div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${e.progress}%` }} /></div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           <div className="grid grid-cols-3 gap-2">
             <QuickLink to="/planner" icon={<Sparkles className="size-5" />} label="Plan day" />
