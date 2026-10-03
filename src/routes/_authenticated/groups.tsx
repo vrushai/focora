@@ -37,6 +37,25 @@ function GroupsPage() {
   const [open, setOpen] = useState<"create" | "join" | null>(null);
   const [name, setName] = useState(""); const [goal, setGoal] = useState(""); const [code, setCode] = useState("");
   const active = groups.data?.find((g) => g.id === sel) ?? groups.data?.[0];
+  const [lastRead, setLastRead] = useState<Record<string, string>>({});
+  useEffect(() => { try { setLastRead(JSON.parse(localStorage.getItem("fs-chat-read") ?? "{}")); } catch { /* ignore */ } }, []);
+  const markRead = (gid: string, at: string) => setLastRead((prev) => {
+    if (prev[gid] && prev[gid] >= at) return prev;
+    const next = { ...prev, [gid]: at };
+    localStorage.setItem("fs-chat-read", JSON.stringify(next));
+    return next;
+  });
+  const recent = useQuery({
+    queryKey: ["group-chat-recent", user?.id],
+    enabled: !!user && !!groups.data?.length,
+    refetchInterval: 8000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("group_messages").select("group_id,user_id,created_at").order("created_at", { ascending: false }).limit(300);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const unread = (gid: string) => (recent.data ?? []).filter((m) => m.group_id === gid && m.user_id !== user?.id && m.created_at > (lastRead[gid] ?? "")).length;
 
   const createGroup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,10 +83,10 @@ function GroupsPage() {
         <>
           {groups.data.length > 1 && (
             <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1">
-              {groups.data.map((g) => <button key={g.id} onClick={() => setSel(g.id)} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-sm", active?.id === g.id ? "border-primary bg-primary text-primary-foreground" : "bg-card")}>{g.name}</button>)}
+              {groups.data.map((g) => <button key={g.id} onClick={() => setSel(g.id)} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-sm", active?.id === g.id ? "border-primary bg-primary text-primary-foreground" : "bg-card")}>{g.name}{unread(g.id) > 0 && <span className="ml-1.5 rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">{unread(g.id)}</span>}</button>)}
             </div>
           )}
-          {active && <GroupView key={active.id} group={active} onLeft={() => { setSel(null); qc.invalidateQueries({ queryKey: ["groups"] }); }} />}
+          {active && <GroupView key={active.id} group={active} unread={unread(active.id)} onRead={(at) => markRead(active.id, at)} onLeft={() => { setSel(null); qc.invalidateQueries({ queryKey: ["groups"] }); }} />}
         </>
       )}
       <Dialog open={open === "create"} onOpenChange={(o) => setOpen(o ? "create" : null)}>
@@ -95,7 +114,7 @@ function GroupsPage() {
 
 type G = { id: string; name: string; goal: string; invite_code: string; owner_id: string };
 
-function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
+function GroupView({ group, onLeft, unread, onRead }: { group: G; onLeft: () => void; unread: number; onRead: (at: string) => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [newTask, setNewTask] = useState("");
@@ -112,6 +131,7 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
         supabase.from("group_members").select("*").eq("group_id", group.id),
         supabase.from("group_tasks").select("*").eq("group_id", group.id).order("created_at"),
       ]);
+      if (m.error || t.error) throw m.error ?? t.error;
       const ids = (t.data ?? []).map((x) => x.id);
       const d = ids.length ? (await supabase.from("group_task_done").select("*").in("task_id", ids)).data ?? [] : [];
       return { members: m.data ?? [], tasks: t.data ?? [], done: d };
@@ -127,22 +147,24 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
   const totalPossible = tasks.length * members.length;
   const groupPct = totalPossible ? Math.round((done.length / totalPossible) * 100) : 0;
 
-  const setStatus = async (s: string) => { await supabase.from("group_members").update({ status: s, status_at: new Date().toISOString() }).eq("group_id", group.id).eq("user_id", user!.id); inv(); };
+  const setStatus = async (s: string) => { const { error } = await supabase.from("group_members").update({ status: s, status_at: new Date().toISOString() }).eq("group_id", group.id).eq("user_id", user!.id); if (error) toast.error("Couldn't update your status — check your connection and try again."); inv(); };
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault(); if (!newTask.trim()) return;
     const { error } = await supabase.from("group_tasks").insert({ group_id: group.id, title: newTask.trim(), due_date: due || null, assigned_to: assignee || null, priority: prio });
-    if (error) { toast.error("Couldn't add task"); return; }
+    if (error) { toast.error("Couldn't add the shared task — it wasn't saved. Please try again."); return; }
     setNewTask(""); setDue(""); setAssignee(""); setPrio("medium"); inv();
   };
   const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
   const sortedTasks = [...tasks].sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || (rank[a.priority] ?? 1) - (rank[b.priority] ?? 1));
   const toggleDone = async (taskId: string, isDone: boolean) => {
-    if (isDone) await supabase.from("group_task_done").delete().eq("task_id", taskId).eq("user_id", user!.id);
-    else await supabase.from("group_task_done").insert({ task_id: taskId });
+    const { error } = isDone
+      ? await supabase.from("group_task_done").delete().eq("task_id", taskId).eq("user_id", user!.id)
+      : await supabase.from("group_task_done").insert({ task_id: taskId });
+    if (error) toast.error("Couldn't sync your progress on this task. Please try again.");
     inv();
   };
-  const delTask = async (id: string) => { await supabase.from("group_tasks").delete().eq("id", id); inv(); };
-  const saveGoal = async () => { if (goal === group.goal) return; await supabase.from("study_groups").update({ goal }).eq("id", group.id); qc.invalidateQueries({ queryKey: ["groups"] }); toast.success("Goal updated"); };
+  const delTask = async (id: string) => { const { error } = await supabase.from("group_tasks").delete().eq("id", id); if (error) toast.error("Couldn't delete the task. Please try again."); inv(); };
+  const saveGoal = async () => { if (goal === group.goal) return; const { error } = await supabase.from("study_groups").update({ goal }).eq("id", group.id); if (error) { toast.error("Couldn't save the goal. Please try again."); setGoal(group.goal); return; } qc.invalidateQueries({ queryKey: ["groups"] }); toast.success("Goal updated"); };
   const leave = async () => {
     if (group.owner_id === user?.id) await supabase.from("study_groups").delete().eq("id", group.id);
     else await supabase.from("group_members").delete().eq("group_id", group.id).eq("user_id", user!.id);
@@ -183,6 +205,7 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
         <Button asChild className="mt-4 h-11 w-full rounded-xl" onClick={() => setStatus("focusing")}><Link to="/focus" search={{ task: undefined }}><Play /> Start focus</Link></Button>
       </div>
 
+      {data.isError && <SyncError text="Couldn't load the latest group updates. Retrying automatically…" onRetry={() => data.refetch()} />}
       <div className="rounded-2xl border bg-card p-4">
         <p className="mb-1 font-semibold">Shared task plan</p>
         <p className="mb-3 text-xs text-muted-foreground">Plan who does what and by when. Everyone ticks off their own progress.</p>
@@ -228,26 +251,49 @@ function GroupView({ group, onLeft }: { group: G; onLeft: () => void }) {
         )}
       </div>
 
-      <GroupChat groupId={group.id} myName={me?.display_name ?? "Student"} />
+      <GroupChat groupId={group.id} myName={me?.display_name ?? "Student"} unread={unread} onRead={onRead} />
 
       <Button variant="ghost" className="w-full text-destructive" onClick={leave}><LogOut />{group.owner_id === user?.id ? "Delete group" : "Leave group"}</Button>
     </div>
   );
 }
 
-function GroupChat({ groupId, myName }: { groupId: string; myName: string }) {
+function SyncError({ text, onRetry }: { text: string; onRetry: () => void }) {
+  return (
+    <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+      <span>{text}</span>
+      <Button size="sm" variant="outline" className="rounded-lg" onClick={onRetry}>Retry</Button>
+    </div>
+  );
+}
+
+function GroupChat({ groupId, myName, unread, onRead }: { groupId: string; myName: string; unread: number; onRead: (at: string) => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const msgs = useQuery({
     queryKey: ["group-chat", groupId],
     refetchInterval: 4000,
-    queryFn: async () => (await supabase.from("group_messages").select("*").eq("group_id", groupId).order("created_at", { ascending: false }).limit(100)).data?.reverse() ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("group_messages").select("*").eq("group_id", groupId).order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return data?.reverse() ?? [];
+    },
   });
   const list = msgs.data ?? [];
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest" }); }, [list.length]);
+  const latest = list[list.length - 1]?.created_at;
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || !latest) return;
+    const io = new IntersectionObserver(([e]) => { if (e?.isIntersecting) onRead(latest); }, { threshold: 0.3 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [latest, onRead]);
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,16 +302,20 @@ function GroupChat({ groupId, myName }: { groupId: string; myName: string }) {
     setSending(true);
     const { error } = await supabase.from("group_messages").insert({ group_id: groupId, body: body.slice(0, 1000), display_name: myName });
     setSending(false);
-    if (error) { toast.error("Message not sent"); return; }
+    if (error) { setFailed(body); toast.error("Message not sent — tap Retry to send it again."); return; }
+    setFailed(null);
     setText("");
     qc.invalidateQueries({ queryKey: ["group-chat", groupId] });
   };
-  const del = async (id: string) => { await supabase.from("group_messages").delete().eq("id", id); qc.invalidateQueries({ queryKey: ["group-chat", groupId] }); };
+  const del = async (id: string) => { const { error } = await supabase.from("group_messages").delete().eq("id", id); if (error) toast.error("Couldn't delete the message."); qc.invalidateQueries({ queryKey: ["group-chat", groupId] }); };
 
   return (
     <div className="rounded-2xl border bg-card p-4">
-      <p className="mb-3 flex items-center gap-2 font-semibold"><MessageCircle className="size-4 text-primary" /> Group chat</p>
-      <div className="max-h-80 space-y-2 overflow-y-auto rounded-xl bg-muted/40 p-3">
+      <p className="mb-3 flex items-center gap-2 font-semibold"><MessageCircle className="size-4 text-primary" /> Group chat
+        {unread > 0 && <span className="rounded-full bg-destructive px-2 text-xs font-semibold text-destructive-foreground">{unread} new</span>}
+      </p>
+      {msgs.isError && <div className="mb-2"><SyncError text="Chat is out of sync — new messages may be missing." onRetry={() => msgs.refetch()} /></div>}
+      <div ref={boxRef} className="max-h-80 space-y-2 overflow-y-auto rounded-xl bg-muted/40 p-3">
         {list.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No messages yet — say hi 👋</p> : list.map((m) => {
           const mine = m.user_id === user?.id;
           return (
@@ -283,6 +333,12 @@ function GroupChat({ groupId, myName }: { groupId: string; myName: string }) {
         })}
         <div ref={endRef} />
       </div>
+      {failed && (
+        <div role="alert" className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <span className="truncate">Not sent: “{failed}”</span>
+          <Button size="sm" variant="outline" className="rounded-lg" onClick={() => { setText(failed); setFailed(null); }}>Retry</Button>
+        </div>
+      )}
       <form onSubmit={send} className="mt-3 flex gap-2">
         <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder="Message your group" className="h-11" />
         <Button type="submit" className="h-11 rounded-xl" disabled={sending || !text.trim()} aria-label="Send"><Send /></Button>
