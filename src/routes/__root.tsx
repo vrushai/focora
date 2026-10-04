@@ -41,6 +41,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
+    if (isChunkError(error) && reloadOnce()) return;
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
@@ -121,8 +122,34 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function isChunkError(e: unknown) {
+  const m = e instanceof Error ? e.message : String(e ?? "");
+  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(m);
+}
+
+function reloadOnce() {
+  try {
+    const last = Number(sessionStorage.getItem("fs-chunk-reload") || 0);
+    if (Date.now() - last < 10_000) return false;
+    sessionStorage.setItem("fs-chunk-reload", String(Date.now()));
+  } catch {}
+  window.location.reload();
+  return true;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    const onPreload = (e: Event) => { e.preventDefault(); reloadOnce(); };
+    const onRejection = (e: PromiseRejectionEvent) => { if (isChunkError(e.reason)) reloadOnce(); };
+    window.addEventListener("vite:preloadError", onPreload);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("vite:preloadError", onPreload);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>
