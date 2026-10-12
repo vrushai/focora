@@ -8,7 +8,7 @@ import { useProfile, useSessions, useTasks } from "@/lib/data";
 import { fmtMin, levelFor, LEVELS, streak, studiedOn } from "@/lib/stats";
 
 export const Route = createFileRoute("/_authenticated/progress")({
-  head: () => ({ meta: [{ title: "Progress — FocusStudy" }, { name: "description", content: "Weekly study time, streaks, sessions and subject breakdown." }, { property: "og:title", content: "Progress — FocusStudy" }, { property: "og:description", content: "Weekly study time, streaks, sessions and subject breakdown." }] }),
+  head: () => ({ meta: [{ title: "Progress — focora" }, { name: "description", content: "Weekly study time, streaks, sessions and subject breakdown." }, { property: "og:title", content: "Progress — focora" }, { property: "og:description", content: "Weekly study time, streaks, sessions and subject breakdown." }] }),
   component: ProgressPage,
 });
 

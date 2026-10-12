@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/focus")({
   validateSearch: (s: Record<string, unknown>) => ({ task: typeof s["task"] === "string" ? (s["task"] as string) : undefined }),
-  head: () => ({ meta: [{ title: "Focus — FocusStudy" }, { name: "description", content: "Distraction-free focus sessions." }, { property: "og:title", content: "Focus — FocusStudy" }, { property: "og:description", content: "Distraction-free focus sessions." }] }),
+  head: () => ({ meta: [{ title: "Focus — focora" }, { name: "description", content: "Distraction-free focus sessions." }, { property: "og:title", content: "Focus — focora" }, { property: "og:description", content: "Distraction-free focus sessions." }] }),
   component: FocusPage,
 });
 

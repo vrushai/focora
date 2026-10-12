@@ -18,7 +18,7 @@ import { SUBJECTS } from "@/components/Onboarding";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings — FocusStudy" }, { name: "description", content: "Profile, goals, reminders, focus timer, theme and data settings." }, { property: "og:title", content: "Settings — FocusStudy" }, { property: "og:description", content: "Profile, goals, reminders, focus timer, theme and data settings." }] }),
+  head: () => ({ meta: [{ title: "Settings — focora" }, { name: "description", content: "Profile, goals, reminders, focus timer, theme and data settings." }, { property: "og:title", content: "Settings — focora" }, { property: "og:description", content: "Profile, goals, reminders, focus timer, theme and data settings." }] }),
   component: SettingsPage,
 });
 

@@ -14,9 +14,9 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "FocusStudy — Your study dashboard" },
+      { title: "focora — Your study dashboard" },
       { name: "description", content: "See today's priorities, start a distraction-free focus session and track your study streak." },
-      { property: "og:title", content: "FocusStudy — Your study dashboard" },
+      { property: "og:title", content: "focora — Your study dashboard" },
       { property: "og:description", content: "See today's priorities, start focusing and track your streak." },
     ],
   }),

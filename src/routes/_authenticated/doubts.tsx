@@ -19,7 +19,7 @@ import { solveDoubt, type DoubtAnswer } from "@/lib/doubt.functions";
 import { SUBJECTS } from "@/components/Onboarding";
 
 export const Route = createFileRoute("/_authenticated/doubts")({
-  head: () => ({ meta: [{ title: "Ask a Doubt — FocusStudy" }, { name: "description", content: "Get clear, grade-appropriate explanations for your study doubts." }, { property: "og:title", content: "Ask a Doubt — FocusStudy" }, { property: "og:description", content: "Get clear, grade-appropriate explanations for your study doubts." }] }),
+  head: () => ({ meta: [{ title: "Ask a Doubt — focora" }, { name: "description", content: "Get clear, grade-appropriate explanations for your study doubts." }, { property: "og:title", content: "Ask a Doubt — focora" }, { property: "og:description", content: "Get clear, grade-appropriate explanations for your study doubts." }] }),
   component: DoubtsPage,
 });
 

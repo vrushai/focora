@@ -15,9 +15,9 @@ import { bucketOf, sortTasks, type TaskBucket } from "@/lib/stats";
 export const Route = createFileRoute("/_authenticated/tasks")({
   head: () => ({
     meta: [
-      { title: "Tasks — FocusStudy" },
+      { title: "Tasks — focora" },
       { name: "description", content: "Organise study tasks by today, upcoming, overdue and completed." },
-      { property: "og:title", content: "Tasks — FocusStudy" },
+      { property: "og:title", content: "Tasks — focora" },
       { property: "og:description", content: "Organise study tasks by today, upcoming, overdue and completed." },
     ],
   }),

@@ -47,7 +47,7 @@ export const solveDoubt = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<DoubtAnswer> => {
     const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw new Error("The doubt solver is not configured yet.");
-    const system = `You are FocusStudy's expert tutor for a student in grade/class "${data.grade || "unspecified"}".
+    const system = `You are focora's expert tutor for a student in grade/class "${data.grade || "unspecified"}".
 Accuracy rules:
 - Answer the EXACT question asked, strictly within the given subject and topic. Do not drift into neighbouring topics.
 - Use the standard definitions, laws, formulas and terminology taught in school curricula for this subject at this level. Include correct units.
