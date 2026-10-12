@@ -13,10 +13,10 @@ import { Logo } from "@/components/Logo";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — FocusStudy" },
-      { name: "description", content: "Sign in to FocusStudy to plan, focus and track your study progress." },
-      { property: "og:title", content: "Sign in — FocusStudy" },
-      { property: "og:description", content: "Sign in to FocusStudy to plan, focus and track your study progress." },
+      { title: "Sign in — focora" },
+      { name: "description", content: "Sign in to focora to plan, focus and track your study progress." },
+      { property: "og:title", content: "Sign in — focora" },
+      { property: "og:description", content: "Sign in to focora to plan, focus and track your study progress." },
     ],
   }),
   component: AuthPage,
@@ -98,7 +98,7 @@ function AuthPage() {
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            {mode === "in" ? "New to FocusStudy?" : "Already have an account?"}{" "}
+            {mode === "in" ? "New to focora?" : "Already have an account?"}{" "}
             <button className="font-medium text-primary" onClick={() => setMode(mode === "in" ? "up" : "in")}>
               {mode === "in" ? "Create an account" : "Sign in"}
             </button>

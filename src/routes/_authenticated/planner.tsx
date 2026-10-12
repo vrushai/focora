@@ -13,7 +13,7 @@ import { daysUntil, fmtMin } from "@/lib/stats";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/planner")({
-  head: () => ({ meta: [{ title: "Plan My Study Day — FocusStudy" }, { name: "description", content: "Build a realistic study schedule with breaks from your tasks and exams." }, { property: "og:title", content: "Plan My Study Day — FocusStudy" }, { property: "og:description", content: "Build a realistic study schedule with breaks from your tasks and exams." }] }),
+  head: () => ({ meta: [{ title: "Plan My Study Day — focora" }, { name: "description", content: "Build a realistic study schedule with breaks from your tasks and exams." }, { property: "og:title", content: "Plan My Study Day — focora" }, { property: "og:description", content: "Build a realistic study schedule with breaks from your tasks and exams." }] }),
   component: PlannerPage,
 });
 

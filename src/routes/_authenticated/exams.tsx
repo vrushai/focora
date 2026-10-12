@@ -17,7 +17,7 @@ import { SUBJECTS } from "@/components/Onboarding";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/exams")({
-  head: () => ({ meta: [{ title: "Exams & Deadlines — FocusStudy" }, { name: "description", content: "Track exam dates, syllabus and preparation progress." }, { property: "og:title", content: "Exams & Deadlines — FocusStudy" }, { property: "og:description", content: "Track exam dates, syllabus and preparation progress." }] }),
+  head: () => ({ meta: [{ title: "Exams & Deadlines — focora" }, { name: "description", content: "Track exam dates, syllabus and preparation progress." }, { property: "og:title", content: "Exams & Deadlines — focora" }, { property: "og:description", content: "Track exam dates, syllabus and preparation progress." }] }),
   component: ExamsPage,
 });
 

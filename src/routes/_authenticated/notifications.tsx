@@ -10,7 +10,7 @@ import { useNotifications } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
-  head: () => ({ meta: [{ title: "Notifications — FocusStudy" }, { name: "description", content: "Your task, exam, goal and focus reminders." }, { property: "og:title", content: "Notifications — FocusStudy" }, { property: "og:description", content: "Your task, exam, goal and focus reminders." }] }),
+  head: () => ({ meta: [{ title: "Notifications — focora" }, { name: "description", content: "Your task, exam, goal and focus reminders." }, { property: "og:title", content: "Notifications — focora" }, { property: "og:description", content: "Your task, exam, goal and focus reminders." }] }),
   component: NotificationsPage,
 });
 

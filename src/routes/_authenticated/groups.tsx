@@ -18,7 +18,7 @@ import { useProfile } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/groups")({
-  head: () => ({ meta: [{ title: "Study Groups — FocusStudy" }, { name: "description", content: "Private study groups with shared goals, tasks and a quiet focus room." }, { property: "og:title", content: "Study Groups — FocusStudy" }, { property: "og:description", content: "Private study groups with shared goals, tasks and a quiet focus room." }] }),
+  head: () => ({ meta: [{ title: "Study Groups — focora" }, { name: "description", content: "Private study groups with shared goals, tasks and a quiet focus room." }, { property: "og:title", content: "Study Groups — focora" }, { property: "og:description", content: "Private study groups with shared goals, tasks and a quiet focus room." }] }),
   component: GroupsPage,
 });
 
