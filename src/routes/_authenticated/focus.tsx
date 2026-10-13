@@ -59,7 +59,7 @@ function FocusPage() {
   const start = async () => {
     const planned = mins;
     const { data: created, error } = await supabase.rpc("start_focus_session", {
-      _task_id: task?.id ?? null,
+      _task_id: (task?.id ?? null) as unknown as string,
       _subject: task?.subject ?? "General",
       _planned_min: planned,
     });
