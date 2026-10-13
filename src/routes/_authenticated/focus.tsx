@@ -33,6 +33,7 @@ function FocusPage() {
   const [left, setLeft] = useState(0);
   const [total, setTotal] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [pausePending, setPausePending] = useState(false);
   const [away, setAway] = useState(0);
   const [result, setResult] = useState<{ min: number; pts: number } | null>(null);
   const saved = useRef(false);
@@ -107,6 +108,21 @@ function FocusPage() {
     setLeft((value) => value + 300);
     setTotal((value) => value + 300);
   };
+  const togglePaused = async () => {
+    if (!sessionId.current || pausePending) return;
+    setPausePending(true);
+    const nextPaused = !paused;
+    const { error } = await supabase.rpc("set_focus_session_paused", {
+      _session_id: sessionId.current,
+      _paused: nextPaused,
+    });
+    setPausePending(false);
+    if (error) {
+      toast.error(error.message || "Could not update the focus timer.");
+      return;
+    }
+    setPaused(nextPaused);
+  };
 
   if (phase === "focus") {
     const mm = String(Math.floor(left / 60)).padStart(2, "0"), ss = String(left % 60).padStart(2, "0");
@@ -117,7 +133,7 @@ function FocusPage() {
         <p className="font-display text-7xl font-semibold tabular md:text-9xl">{mm}:{ss}</p>
         {away > 0 && <p className="text-sm opacity-70">Welcome back — you left the page {away}×. Stay with it.</p>}
         <div className="grid w-full max-w-md grid-cols-2 gap-3">
-          <Button variant="secondary" className="h-12 rounded-xl" onClick={() => setPaused(!paused)}>{paused ? "Resume" : "Pause"}</Button>
+          <Button variant="secondary" className="h-12 rounded-xl" onClick={togglePaused} disabled={pausePending}>{paused ? "Resume" : "Pause"}</Button>
           <Button variant="secondary" className="h-12 rounded-xl" onClick={extendByFive} disabled={total / 60 >= 240}>+5 minutes</Button>
           <Button className="h-12 rounded-xl" onClick={() => finish(true)}>Finish session</Button>
           <Button variant="ghost" className="h-12 rounded-xl text-focus-fg/70" onClick={() => confirm("Leave this focus session?") && finish(false)}>Emergency exit</Button>
