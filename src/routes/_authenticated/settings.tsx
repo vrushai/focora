@@ -60,7 +60,8 @@ function SettingsPage() {
   const deleteAll = async () => {
     for (const t of ["focus_sessions", "doubts", "notifications", "exams"] as const) await supabase.from(t).delete().not("id", "is", null);
     await supabase.from("tasks").delete().not("id", "is", null);
-    await supabase.from("profiles").update({ points: 0 }).eq("id", profile.id);
+    const { error } = await supabase.rpc("reset_own_points");
+    if (error) throw error;
   };
   const logout = async () => { await supabase.auth.signOut(); qc.clear(); nav({ to: "/auth" }); };
 

@@ -39,25 +39,18 @@ export function useProfile() {
 export function useUpdateProfile() {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const editableFields = new Set([
+    "name", "grade", "subjects", "study_hours", "daily_goal_min", "reminder_style",
+    "problem", "onboarded", "focus_preset", "custom_focus_min", "reminders_enabled", "leave_warning",
+  ]);
   return useMutation({
-    mutationFn: async (patch: TablesUpdate<"profiles">) =>
-      must(await supabase.from("profiles").update(patch).eq("id", user!.id).select().single()),
+    mutationFn: async (patch: Pick<TablesUpdate<"profiles">, "name" | "grade" | "subjects" | "study_hours" | "daily_goal_min" | "reminder_style" | "problem" | "onboarded" | "focus_preset" | "custom_focus_min" | "reminders_enabled" | "leave_warning">) => {
+      const safePatch = Object.fromEntries(Object.entries(patch).filter(([key]) => editableFields.has(key))) as typeof patch;
+      return must(await supabase.from("profiles").update(safePatch).eq("id", user!.id).select().single());
+    },
     onSuccess: (p) => qc.setQueryData(["profile", user?.id], p),
     onError: onErr,
   });
-}
-
-export function useAddPoints() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  return async (n: number) => {
-    const p = qc.getQueryData<Profile>(["profile", user?.id]);
-    if (!p || !user) return;
-    const updated = must(
-      await supabase.from("profiles").update({ points: p.points + n }).eq("id", user.id).select().single(),
-    );
-    qc.setQueryData(["profile", user.id], updated);
-  };
 }
 
 // ---------- Tasks ----------
@@ -73,7 +66,6 @@ export function useTasks() {
 
 export function useTaskMutations() {
   const qc = useQueryClient();
-  const addPoints = useAddPoints();
   const inv = () => qc.invalidateQueries({ queryKey: ["tasks"] });
   const create = useMutation({
     mutationFn: async (t: TablesInsert<"tasks">) => must(await supabase.from("tasks").insert(t).select().single()),
@@ -110,8 +102,8 @@ export function useTaskMutations() {
         await supabase.from("tasks").insert({ ...rest, due_at: d.toISOString() });
       }
       if (completing) {
-        await addPoints(10);
         toast.success("Task complete · +10 Focus Points");
+        await qc.invalidateQueries({ queryKey: ["profile"] });
       }
       return res;
     },

@@ -82,10 +82,13 @@ export type Database = {
       }
       focus_sessions: {
         Row: {
+          accumulated_seconds: number
           actual_min: number
           completed: boolean
+          finished_at: string | null
           id: string
           is_sample: boolean
+          paused_at: string | null
           planned_min: number
           points: number
           started_at: string
@@ -94,10 +97,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accumulated_seconds?: number
           actual_min?: number
           completed?: boolean
+          finished_at?: string | null
           id?: string
           is_sample?: boolean
+          paused_at?: string | null
           planned_min: number
           points?: number
           started_at?: string
@@ -106,10 +112,13 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          accumulated_seconds?: number
           actual_min?: number
           completed?: boolean
+          finished_at?: string | null
           id?: string
           is_sample?: boolean
+          paused_at?: string | null
           planned_min?: number
           points?: number
           started_at?: string
@@ -291,6 +300,33 @@ export type Database = {
         }
         Relationships: []
       }
+      points_awards: {
+        Row: {
+          awarded_at: string
+          id: string
+          points: number
+          source_id: string
+          source_type: string
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          id?: string
+          points: number
+          source_id: string
+          source_type: string
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          id?: string
+          points?: number
+          source_id?: string
+          source_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -431,12 +467,49 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      extend_focus_session: {
+        Args: { _extra_min: number; _session_id: string }
+        Returns: number
+      }
+      finish_focus_session: {
+        Args: { _completed: boolean; _session_id: string }
+        Returns: {
+          accumulated_seconds: number
+          actual_min: number
+          completed: boolean
+          finished_at: string | null
+          id: string
+          is_sample: boolean
+          paused_at: string | null
+          planned_min: number
+          points: number
+          started_at: string
+          subject: string
+          task_id: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "focus_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_group_member: {
         Args: { _group: string; _user: string }
         Returns: boolean
       }
       join_group_by_code: {
         Args: { _code: string; _name: string }
+        Returns: string
+      }
+      reset_own_points: { Args: never; Returns: undefined }
+      set_focus_session_paused: {
+        Args: { _paused: boolean; _session_id: string }
+        Returns: undefined
+      }
+      start_focus_session: {
+        Args: { _planned_min: number; _subject: string; _task_id: string }
         Returns: string
       }
     }
