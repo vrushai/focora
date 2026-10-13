@@ -15,6 +15,13 @@
       "when": 1790922165931,
       "tag": "0001_groups_chat_and_task_order",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791866216917,
+      "tag": "0002_lock_group_privilege_columns",
+      "breakpoints": true
     }
   ]
 }
