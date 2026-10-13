@@ -22,6 +22,34 @@
       "when": 1791866216917,
       "tag": "0002_lock_group_privilege_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791866900881,
+      "tag": "0003_secure_points_awards",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791866954465,
+      "tag": "0004_preserve_session_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791867050156,
+      "tag": "0005_retain_sample_session_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791867108063,
+      "tag": "0006_track_active_focus_time",
+      "breakpoints": true
     }
   ]
 }

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useAddPoints, useProfile, useSessions, useTasks } from "@/lib/data";
+import { useProfile, useSessions, useTasks } from "@/lib/data";
 import { streak } from "@/lib/stats";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/focus")({
   validateSearch: (s: Record<string, unknown>) => ({ task: typeof s["task"] === "string" ? (s["task"] as string) : undefined }),
@@ -23,7 +24,6 @@ function FocusPage() {
   const tasks = useTasks().data ?? [];
   const profile = useProfile().data!;
   const sessions = useSessions().data ?? [];
-  const addPoints = useAddPoints();
   const qc = useQueryClient();
   const [selected, setSelected] = useState(taskId ?? "");
   const [preset, setPreset] = useState<"pomodoro" | "long" | "custom">("pomodoro");
@@ -33,9 +33,11 @@ function FocusPage() {
   const [left, setLeft] = useState(0);
   const [total, setTotal] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [pausePending, setPausePending] = useState(false);
   const [away, setAway] = useState(0);
   const [result, setResult] = useState<{ min: number; pts: number } | null>(null);
   const saved = useRef(false);
+  const sessionId = useRef<string | null>(null);
   const task = tasks.find((t) => t.id === selected);
   const mins = preset === "custom" ? custom : PRESETS[preset][0];
 
@@ -54,20 +56,72 @@ function FocusPage() {
     return () => { document.removeEventListener("visibilitychange", vis); window.removeEventListener("beforeunload", bu); };
   }, [phase, profile.leave_warning]);
 
-  const start = () => {
-    if (preset === "custom" && custom !== profile.custom_focus_min) void supabase.from("profiles").update({ custom_focus_min: custom }).eq("id", profile.id);
+  const start = async () => {
+    const planned = mins;
+    const { data: created, error } = await supabase.rpc("start_focus_session", {
+      _task_id: (task?.id ?? null) as unknown as string,
+      _subject: task?.subject ?? "General",
+      _planned_min: planned,
+    });
+    if (error || !created) {
+      toast.error(error?.message ?? "Could not start the focus session. Please try again.");
+      return;
+    }
+    sessionId.current = created;
+    if (preset === "custom" && custom !== profile.custom_focus_min) {
+      const { error: saveError } = await supabase.from("profiles").update({ custom_focus_min: custom }).eq("id", profile.id);
+      if (saveError) toast.error("Session started, but your timer preference could not be saved.");
+    }
     saved.current = false; setTotal(mins * 60); setLeft(mins * 60); setPaused(false); setAway(0); setPhase("focus");
     document.documentElement.requestFullscreen?.().catch(() => {});
   };
   const finish = async (completed: boolean) => {
-    if (saved.current) return; saved.current = true;
-    const actual = Math.round((total - left) / 60);
-    const pts = completed ? 20 : 0;
-    await supabase.from("focus_sessions").insert({ task_id: task?.id ?? null, subject: task?.subject ?? "General", planned_min: Math.round(total / 60), actual_min: actual, completed, points: pts });
-    if (pts) await addPoints(pts);
+    if (saved.current || !sessionId.current) return;
+    saved.current = true;
+    const { data: finished, error } = await supabase.rpc("finish_focus_session", {
+      _session_id: sessionId.current,
+      _completed: completed,
+    });
+    if (error || !finished) {
+      saved.current = false;
+      toast.error(error?.message ?? "Could not save your focus session. Please retry.");
+      return;
+    }
+    const actual = finished.actual_min;
+    const pts = finished.points;
+    sessionId.current = null;
     qc.invalidateQueries({ queryKey: ["sessions"] });
+    qc.invalidateQueries({ queryKey: ["profile"] });
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    setResult({ min: actual, pts }); setPhase(completed ? "done" : "setup");
+    setResult({ min: actual, pts }); setPhase(finished.completed ? "done" : "setup");
+  };
+  const extendByFive = async () => {
+    if (!sessionId.current || total / 60 >= 240) return;
+    const { error } = await supabase.rpc("extend_focus_session", {
+      _session_id: sessionId.current,
+      _extra_min: 5,
+    });
+    if (error) {
+      toast.error(error.message || "Could not extend this focus session.");
+      return;
+    }
+    setLeft((value) => value + 300);
+    setTotal((value) => value + 300);
+  };
+  const togglePaused = async () => {
+    if (!sessionId.current || pausePending) return;
+    setPausePending(true);
+    const nextPaused = !paused;
+    const { error } = await supabase.rpc("set_focus_session_paused", {
+      _session_id: sessionId.current,
+      _paused: nextPaused,
+    });
+    setPausePending(false);
+    if (error) {
+      toast.error(error.message || "Could not update the focus timer.");
+      return;
+    }
+    setPaused(nextPaused);
   };
 
   if (phase === "focus") {
@@ -79,8 +133,8 @@ function FocusPage() {
         <p className="font-display text-7xl font-semibold tabular md:text-9xl">{mm}:{ss}</p>
         {away > 0 && <p className="text-sm opacity-70">Welcome back — you left the page {away}×. Stay with it.</p>}
         <div className="grid w-full max-w-md grid-cols-2 gap-3">
-          <Button variant="secondary" className="h-12 rounded-xl" onClick={() => setPaused(!paused)}>{paused ? "Resume" : "Pause"}</Button>
-          <Button variant="secondary" className="h-12 rounded-xl" onClick={() => { setLeft((l) => l + 300); setTotal((t) => t + 300); }}>+5 minutes</Button>
+          <Button variant="secondary" className="h-12 rounded-xl" onClick={togglePaused} disabled={pausePending}>{paused ? "Resume" : "Pause"}</Button>
+          <Button variant="secondary" className="h-12 rounded-xl" onClick={extendByFive} disabled={total / 60 >= 240}>+5 minutes</Button>
           <Button className="h-12 rounded-xl" onClick={() => finish(true)}>Finish session</Button>
           <Button variant="ghost" className="h-12 rounded-xl text-focus-fg/70" onClick={() => confirm("Leave this focus session?") && finish(false)}>Emergency exit</Button>
         </div>
