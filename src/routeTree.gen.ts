@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as AuthenticatedDoubtsRouteImport } from './routes/_authenticated/doubts'
 import { Route as AuthenticatedExamsRouteImport } from './routes/_authenticated/exams'
 import { Route as AuthenticatedFocusRouteImport } from './routes/_authenticated/focus'
@@ -34,6 +35,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDoubtsRoute = AuthenticatedDoubtsRouteImport.update({
@@ -86,6 +92,7 @@ const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/library': typeof LibraryRoute
   '/doubts': typeof AuthenticatedDoubtsRoute
   '/exams': typeof AuthenticatedExamsRoute
   '/focus': typeof AuthenticatedFocusRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/library': typeof LibraryRoute
   '/doubts': typeof AuthenticatedDoubtsRoute
   '/exams': typeof AuthenticatedExamsRoute
   '/focus': typeof AuthenticatedFocusRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/library': typeof LibraryRoute
   '/_authenticated/doubts': typeof AuthenticatedDoubtsRoute
   '/_authenticated/exams': typeof AuthenticatedExamsRoute
   '/_authenticated/focus': typeof AuthenticatedFocusRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/library'
     | '/doubts'
     | '/exams'
     | '/focus'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/library'
     | '/doubts'
     | '/exams'
     | '/focus'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/library'
     | '/_authenticated/doubts'
     | '/_authenticated/exams'
     | '/_authenticated/focus'
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  LibraryRoute: typeof LibraryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/doubts': {
@@ -294,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  LibraryRoute: LibraryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
