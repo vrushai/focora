@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      doubt_hearts: {
+        Row: {
+          created_at: string
+          doubt_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doubt_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          doubt_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doubt_hearts_doubt_id_fkey"
+            columns: ["doubt_id"]
+            isOneToOne: false
+            referencedRelation: "doubt_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doubt_library: {
+        Row: {
+          answer: Json
+          author_name: string
+          created_at: string
+          hearts: number
+          id: string
+          question: string
+          subject: string
+          topic: string
+          user_id: string | null
+        }
+        Insert: {
+          answer?: Json
+          author_name?: string
+          created_at?: string
+          hearts?: number
+          id?: string
+          question: string
+          subject?: string
+          topic?: string
+          user_id?: string | null
+        }
+        Update: {
+          answer?: Json
+          author_name?: string
+          created_at?: string
+          hearts?: number
+          id?: string
+          question?: string
+          subject?: string
+          topic?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       doubts: {
         Row: {
           answer: Json
@@ -175,6 +237,7 @@ export type Database = {
           display_name: string
           group_id: string
           id: string
+          reply_to: string | null
           user_id: string
         }
         Insert: {
@@ -183,6 +246,7 @@ export type Database = {
           display_name?: string
           group_id: string
           id?: string
+          reply_to?: string | null
           user_id?: string
         }
         Update: {
@@ -191,6 +255,7 @@ export type Database = {
           display_name?: string
           group_id?: string
           id?: string
+          reply_to?: string | null
           user_id?: string
         }
         Relationships: [
@@ -199,6 +264,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -337,6 +409,7 @@ export type Database = {
           id: string
           leave_warning: boolean
           name: string
+          notification_prefs: Json
           onboarded: boolean
           points: number
           problem: string
@@ -354,6 +427,7 @@ export type Database = {
           id: string
           leave_warning?: boolean
           name?: string
+          notification_prefs?: Json
           onboarded?: boolean
           points?: number
           problem?: string
@@ -371,6 +445,7 @@ export type Database = {
           id?: string
           leave_warning?: boolean
           name?: string
+          notification_prefs?: Json
           onboarded?: boolean
           points?: number
           problem?: string
@@ -512,6 +587,7 @@ export type Database = {
         Args: { _planned_min: number; _subject: string; _task_id: string }
         Returns: string
       }
+      toggle_doubt_heart: { Args: { _doubt_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
