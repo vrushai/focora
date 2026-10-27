@@ -65,8 +65,9 @@ export function useReminders(profile?: Profile, tasks?: Task[], exams?: Exam[], 
           });
         }
       }
+      const prefs = (profile.notification_prefs ?? {}) as Record<string, boolean>;
       let created = false;
-      for (const ev of events) {
+      for (const ev of events.filter((ev) => prefs[ev.category] !== false)) {
         if (await pushNotification(ev)) {
           created = true;
           toast(ev.title, { description: ev.body });

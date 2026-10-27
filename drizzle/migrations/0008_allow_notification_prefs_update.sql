@@ -1,0 +1,1 @@
+GRANT UPDATE (notification_prefs) ON public.profiles TO authenticated;

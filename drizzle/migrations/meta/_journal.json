@@ -57,6 +57,13 @@
       "when": 1793024931144,
       "tag": "0007_chat_replies_doubt_library_notification_prefs",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793101477693,
+      "tag": "0008_allow_notification_prefs_update",
+      "breakpoints": true
     }
   ]
 }

@@ -42,9 +42,10 @@ export function useUpdateProfile() {
   const editableFields = new Set([
     "name", "grade", "subjects", "study_hours", "daily_goal_min", "reminder_style",
     "problem", "onboarded", "focus_preset", "custom_focus_min", "reminders_enabled", "leave_warning",
+    "notification_prefs",
   ]);
   return useMutation({
-    mutationFn: async (patch: Pick<TablesUpdate<"profiles">, "name" | "grade" | "subjects" | "study_hours" | "daily_goal_min" | "reminder_style" | "problem" | "onboarded" | "focus_preset" | "custom_focus_min" | "reminders_enabled" | "leave_warning">) => {
+    mutationFn: async (patch: Pick<TablesUpdate<"profiles">, "name" | "grade" | "subjects" | "study_hours" | "daily_goal_min" | "reminder_style" | "problem" | "onboarded" | "focus_preset" | "custom_focus_min" | "reminders_enabled" | "leave_warning" | "notification_prefs">) => {
       const safePatch = Object.fromEntries(Object.entries(patch).filter(([key]) => editableFields.has(key))) as typeof patch;
       return must(await supabase.from("profiles").update(safePatch).eq("id", user!.id).select().single());
     },
