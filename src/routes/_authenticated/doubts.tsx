@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Search, Sparkles, Lightbulb, ListOrdered, Globe, HelpCircle, Loader2, Trash2 } from "lucide-react";
+import { Search, Sparkles, Lightbulb, ListOrdered, Globe, HelpCircle, Loader2, Trash2, Library } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { useAuth } from "@/lib/auth";
 import { useDoubts, useProfile, type Doubt } from "@/lib/data";
 import { solveDoubt, type DoubtAnswer } from "@/lib/doubt.functions";
 import { SUBJECTS } from "@/components/Onboarding";
@@ -39,6 +40,8 @@ function DoubtsPage() {
   const [current, setCurrent] = useState<{ question: string; subject: string; topic: string; id?: string | undefined } | null>(null);
   const [loading, setLoading] = useState<Mode | null>(null);
   const [search, setSearch] = useState("");
+  const [shared, setShared] = useState<Record<string, boolean>>({});
+  const shareKey = current ? `${current.subject}|${current.question}` : null;
 
   const ask = async (mode: Mode) => {
     const base = mode === "default" ? { question: q.trim(), subject, topic: topic.trim() } : current;
@@ -71,6 +74,32 @@ function DoubtsPage() {
   const removeDoubt = async (id: string) => {
     await supabase.from("doubts").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["doubts"] });
+  };
+
+  // Doubts this student has already shared to the public library stay marked.
+  const myLib = useQuery({
+    queryKey: ["my-library-entries"],
+    enabled: !!user,
+    queryFn: async () => (await supabase.from("doubt_library").select("subject,question").eq("user_id", user!.id)).data ?? [],
+  });
+  useEffect(() => {
+    if (!myLib.data?.length) return;
+    setShared((p) => {
+      const next = { ...p };
+      for (const e of myLib.data) next[`${e.subject}|${e.question}`] = true;
+      return next;
+    });
+  }, [myLib.data]);
+
+  const shareToLibrary = async () => {
+    if (!current || !answer || !shareKey) return;
+    const { error } = await supabase.from("doubt_library").insert({
+      subject: current.subject, topic: current.topic, question: current.question,
+      answer: answer as unknown as Json, author_name: profile?.name || "Student",
+    });
+    if (error) { toast.error("Couldn't share to the library — please try again."); return; }
+    setShared((p) => ({ ...p, [shareKey]: true }));
+    toast.success("Shared! Students can find this in the Doubt Library.");
   };
 
   const s = search.toLowerCase();

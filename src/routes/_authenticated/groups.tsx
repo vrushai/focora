@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Copy, Plus, Users, LogOut, Target, Trash2, Play, MessageCircle, Send } from "lucide-react";
+import { Copy, Plus, Users, LogOut, Target, Trash2, Play, MessageCircle, Send, Share2, Forward, CornerUpLeft, X } from "lucide-react";
 import { PriorityBadge } from "@/components/tasks";
 import { PageHeader, EmptyState } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ function GroupsPage() {
               {groups.data.map((g) => <button key={g.id} onClick={() => setSel(g.id)} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-sm", active?.id === g.id ? "border-primary bg-primary text-primary-foreground" : "bg-card")}>{g.name}{unread(g.id) > 0 && <span className="ml-1.5 rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">{unread(g.id)}</span>}</button>)}
             </div>
           )}
-          {active && <GroupView key={active.id} group={active} unread={unread(active.id)} onRead={(at) => markRead(active.id, at)} onLeft={() => { setSel(null); qc.invalidateQueries({ queryKey: ["groups"] }); }} />}
+          {active && <GroupView key={active.id} group={active} groups={groups.data ?? []} unread={unread(active.id)} onRead={(at) => markRead(active.id, at)} onLeft={() => { setSel(null); qc.invalidateQueries({ queryKey: ["groups"] }); }} />}
         </>
       )}
       <Dialog open={open === "create"} onOpenChange={(o) => setOpen(o ? "create" : null)}>
@@ -114,7 +114,7 @@ function GroupsPage() {
 
 type G = { id: string; name: string; goal: string; invite_code: string; owner_id: string };
 
-function GroupView({ group, onLeft, unread, onRead }: { group: G; onLeft: () => void; unread: number; onRead: (at: string) => void }) {
+function GroupView({ group, groups, onLeft, unread, onRead }: { group: G; groups: G[]; onLeft: () => void; unread: number; onRead: (at: string) => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [newTask, setNewTask] = useState("");
@@ -251,7 +251,7 @@ function GroupView({ group, onLeft, unread, onRead }: { group: G; onLeft: () => 
         )}
       </div>
 
-      <GroupChat groupId={group.id} myName={me?.display_name ?? "Student"} unread={unread} onRead={onRead} />
+      <GroupChat groupId={group.id} myName={me?.display_name ?? "Student"} groups={groups} unread={unread} onRead={onRead} />
 
       <Button variant="ghost" className="w-full text-destructive" onClick={leave}><LogOut />{group.owner_id === user?.id ? "Delete group" : "Leave group"}</Button>
     </div>
@@ -267,12 +267,17 @@ function SyncError({ text, onRetry }: { text: string; onRetry: () => void }) {
   );
 }
 
-function GroupChat({ groupId, myName, unread, onRead }: { groupId: string; myName: string; unread: number; onRead: (at: string) => void }) {
+type Msg = { id: string; user_id: string; display_name: string; body: string; reply_to: string | null; created_at: string };
+
+function GroupChat({ groupId, myName, groups, unread, onRead }: { groupId: string; myName: string; groups: G[]; unread: number; onRead: (at: string) => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<Msg | null>(null);
+  const [actionMsg, setActionMsg] = useState<Msg | null>(null);
+  const [forward, setForward] = useState<Msg | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const msgs = useQuery({
@@ -281,10 +286,11 @@ function GroupChat({ groupId, myName, unread, onRead }: { groupId: string; myNam
     queryFn: async () => {
       const { data, error } = await supabase.from("group_messages").select("*").eq("group_id", groupId).order("created_at", { ascending: false }).limit(100);
       if (error) throw error;
-      return data?.reverse() ?? [];
+      return (data ?? []).reverse() as Msg[];
     },
   });
   const list = msgs.data ?? [];
+  const byId = useMemo(() => new Map(list.map((m) => [m.id, m] as const)), [list]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest" }); }, [list.length]);
   const latest = list[list.length - 1]?.created_at;
   useEffect(() => {
@@ -295,19 +301,76 @@ function GroupChat({ groupId, myName, unread, onRead }: { groupId: string; myNam
     return () => io.disconnect();
   }, [latest, onRead]);
 
+  const push = async (body: string, replyToId: string | null, targetGroupId = groupId) => {
+    const { error } = await supabase.from("group_messages").insert({ group_id: targetGroupId, body: body.slice(0, 1000), display_name: myName, reply_to: replyToId });
+    if (error) return error;
+    qc.invalidateQueries({ queryKey: ["group-chat", targetGroupId] });
+    return null;
+  };
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const body = text.trim();
     if (!body || sending) return;
     setSending(true);
-    const { error } = await supabase.from("group_messages").insert({ group_id: groupId, body: body.slice(0, 1000), display_name: myName });
+    const error = await push(body, replyTo?.id ?? null);
     setSending(false);
     if (error) { setFailed(body); toast.error("Message not sent — tap Retry to send it again."); return; }
     setFailed(null);
     setText("");
+    setReplyTo(null);
+  };
+  const retry = async () => {
+    if (!failed || sending) return;
+    setSending(true);
+    const error = await push(failed, replyTo?.id ?? null);
+    setSending(false);
+    if (error) { toast.error("Still not sent — check your connection and try again."); return; }
+    setFailed(null);
+  };
+  const del = async (m: Msg) => {
+    const { error } = await supabase.from("group_messages").delete().eq("id", m.id);
+    setActionMsg(null);
+    if (error) { toast.error("Couldn't delete the message."); return; }
     qc.invalidateQueries({ queryKey: ["group-chat", groupId] });
   };
-  const del = async (id: string) => { const { error } = await supabase.from("group_messages").delete().eq("id", id); if (error) toast.error("Couldn't delete the message."); qc.invalidateQueries({ queryKey: ["group-chat", groupId] }); };
+  const copyMsg = async (m: Msg) => {
+    setActionMsg(null);
+    try { await navigator.clipboard.writeText(m.body); toast.success("Message copied"); } catch { toast.error("Couldn't copy — select the text instead."); }
+  };
+  const shareMsg = async (m: Msg) => {
+    setActionMsg(null);
+    if (typeof navigator.share === "function") {
+      try { await navigator.share({ title: "focora study group", text: m.body }); } catch { /* user closed the share sheet */ }
+      return;
+    }
+    copyMsg(m);
+  };
+  const forwardTo = async (to: G) => {
+    const m = forward;
+    if (!m) return;
+    setForward(null);
+    const error = await push(m.body, null, to.id);
+    if (error) { toast.error("Couldn't forward — please try again."); return; }
+    toast.success(`Forwarded to ${to.name}`);
+  };
+
+  // WhatsApp-style rows: a date chip whenever the day changes.
+  const rows: ({ kind: "day"; key: string; label: string } | { kind: "msg"; key: string; m: Msg })[] = [];
+  {
+    let lastDay = "";
+    for (const m of list) {
+      const d = new Date(m.created_at);
+      const day = format(d, "yyyy-MM-dd");
+      if (day !== lastDay) {
+        lastDay = day;
+        const label = day === format(new Date(), "yyyy-MM-dd") ? "Today" : day === format(new Date(Date.now() - 86400000), "yyyy-MM-dd") ? "Yesterday" : format(d, "EEE, d MMM yyyy");
+        rows.push({ kind: "day", key: `day-${day}`, label });
+      }
+      rows.push({ kind: "msg", key: m.id, m });
+    }
+  }
+  const act = actionMsg;
+  const actMine = act?.user_id === user?.id;
 
   return (
     <div className="rounded-2xl border bg-card p-4">
@@ -316,33 +379,90 @@ function GroupChat({ groupId, myName, unread, onRead }: { groupId: string; myNam
       </p>
       {msgs.isError && <div className="mb-2"><SyncError text="Chat is out of sync — new messages may be missing." onRetry={() => msgs.refetch()} /></div>}
       <div ref={boxRef} className="max-h-80 space-y-2 overflow-y-auto rounded-xl bg-muted/40 p-3">
-        {list.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No messages yet — say hi 👋</p> : list.map((m) => {
-          const mine = m.user_id === user?.id;
-          return (
-            <div key={m.id} className={cn("group flex", mine ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[80%] rounded-2xl px-3 py-2 text-sm", mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm border bg-card")}>
-                {!mine && <p className="text-[11px] font-semibold text-primary">{m.display_name}</p>}
-                <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                <p className={cn("mt-0.5 flex items-center gap-2 text-[10px]", mine ? "justify-end opacity-70" : "text-muted-foreground")}>
-                  {format(new Date(m.created_at), "h:mm a")}
-                  {mine && <button onClick={() => del(m.id)} className="underline-offset-2 hover:underline">delete</button>}
-                </p>
+        {list.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No messages yet — say hi 👋</p> : rows.map((r) =>
+          r.kind === "day" ? (
+            <p key={r.key} className="py-1 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{r.label}</p>
+          ) : (() => {
+            const m = r.m;
+            const mine = m.user_id === user?.id;
+            const ref = m.reply_to ? byId.get(m.reply_to) : undefined;
+            return (
+              <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+                <button onClick={() => setActionMsg(m)} className={cn("max-w-[85%] cursor-pointer rounded-2xl px-3 py-2 text-left text-sm transition-transform active:scale-[0.98]", mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card")} aria-label="Message actions">
+                  {!mine && <p className="text-[11px] font-semibold text-primary">{m.display_name}</p>}
+                  {ref && (
+                    <div className={cn("mb-1.5 rounded-lg border-l-2 px-2 py-1 text-xs", mine ? "border-primary-foreground/70 bg-primary-foreground/10" : "border-primary bg-muted/60")}>
+                      <p className={cn("font-semibold", !mine && "text-primary")}>{ref.user_id === user?.id ? "You" : ref.display_name}</p>
+                      <p className="line-clamp-2 opacity-80">{ref.body}</p>
+                    </div>
+                  )}
+                  <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                  <p className={cn("mt-0.5 text-right text-[10px]", mine ? "opacity-70" : "text-muted-foreground")}>{format(new Date(m.created_at), "h:mm a")}</p>
+                </button>
               </div>
-            </div>
-          );
-        })}
+            );
+          })(),
+        )}
         <div ref={endRef} />
       </div>
+      {replyTo && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl border-l-2 border-primary bg-muted/50 p-2 pl-3 text-xs">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-primary">{replyTo.user_id === user?.id ? "Replying to yourself" : `Replying to ${replyTo.display_name}`}</p>
+            <p className="truncate text-muted-foreground">{replyTo.body}</p>
+          </div>
+          <Button size="icon" variant="ghost" className="size-8 rounded-full" aria-label="Cancel reply" onClick={() => setReplyTo(null)}><X className="size-4" /></Button>
+        </div>
+      )}
       {failed && (
         <div role="alert" className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <span className="truncate">Not sent: “{failed}”</span>
-          <Button size="sm" variant="outline" className="rounded-lg" onClick={() => { setText(failed); setFailed(null); }}>Retry</Button>
+          <Button size="sm" variant="outline" className="rounded-lg" onClick={retry}>Retry</Button>
         </div>
       )}
       <form onSubmit={send} className="mt-3 flex gap-2">
         <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder="Message your group" className="h-11" />
         <Button type="submit" className="h-11 rounded-xl" disabled={sending || !text.trim()} aria-label="Send"><Send /></Button>
       </form>
+
+      <Dialog open={!!act} onOpenChange={(o) => !o && setActionMsg(null)}>
+        <DialogContent className="rounded-2xl p-4 sm:max-w-xs">
+          <DialogHeader className="sr-only"><DialogTitle>Message actions</DialogTitle></DialogHeader>
+          {act && <p className="mb-1 truncate text-xs text-muted-foreground">{act.body}</p>}
+          <div className="space-y-1">
+            <ActionBtn icon={CornerUpLeft} label="Reply" onClick={() => { setReplyTo(act); setActionMsg(null); }} />
+            <ActionBtn icon={Copy} label="Copy" onClick={() => act && copyMsg(act)} />
+            <ActionBtn icon={Share2} label="Share" onClick={() => act && shareMsg(act)} />
+            <ActionBtn icon={Forward} label="Forward to group" onClick={() => { setForward(act); setActionMsg(null); }} />
+            {actMine && <ActionBtn icon={Trash2} label="Delete" destructive onClick={() => act && del(act)} />}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!forward} onOpenChange={(o) => !o && setForward(null)}>
+        <DialogContent className="rounded-2xl sm:max-w-xs">
+          <DialogHeader><DialogTitle>Forward to…</DialogTitle></DialogHeader>
+          {groups.filter((g) => g.id !== groupId).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Join or create another group to forward messages there.</p>
+          ) : (
+            <div className="space-y-1">
+              {groups.filter((g) => g.id !== groupId).map((g) => (
+                <button key={g.id} onClick={() => forwardTo(g)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-muted">
+                  <Users className="size-4 text-primary" />{g.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function ActionBtn({ icon: Icon, label, destructive, onClick }: { icon: typeof Copy; label: string; destructive?: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-muted", destructive && "text-destructive")}>
+      <Icon className="size-4" />{label}
+    </button>
   );
 }
