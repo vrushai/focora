@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/doubts")({
 type Mode = "default" | "different" | "example" | "simpler";
 
 function DoubtsPage() {
+  const { user } = useAuth();
   const profile = useProfile().data;
   const doubts = useDoubts();
   const qc = useQueryClient();
