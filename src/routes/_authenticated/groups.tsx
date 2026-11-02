@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Copy, Plus, Users, LogOut, Target, Trash2, Play, MessageCircle, Send } from "lucide-react";
+import { Copy, Plus, Users, LogOut, Target, Trash2, Play, MessageCircle, Send, Share2, Forward, CornerUpLeft, X } from "lucide-react";
 import { PriorityBadge } from "@/components/tasks";
 import { PageHeader, EmptyState } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ function GroupsPage() {
               {groups.data.map((g) => <button key={g.id} onClick={() => setSel(g.id)} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-sm", active?.id === g.id ? "border-primary bg-primary text-primary-foreground" : "bg-card")}>{g.name}{unread(g.id) > 0 && <span className="ml-1.5 rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">{unread(g.id)}</span>}</button>)}
             </div>
           )}
-          {active && <GroupView key={active.id} group={active} unread={unread(active.id)} onRead={(at) => markRead(active.id, at)} onLeft={() => { setSel(null); qc.invalidateQueries({ queryKey: ["groups"] }); }} />}
+          {active && <GroupView key={active.id} group={active} groups={groups.data ?? []} unread={unread(active.id)} onRead={(at) => markRead(active.id, at)} onLeft={() => { setSel(null); qc.invalidateQueries({ queryKey: ["groups"] }); }} />}
         </>
       )}
       <Dialog open={open === "create"} onOpenChange={(o) => setOpen(o ? "create" : null)}>
@@ -114,7 +114,7 @@ function GroupsPage() {
 
 type G = { id: string; name: string; goal: string; invite_code: string; owner_id: string };
 
-function GroupView({ group, onLeft, unread, onRead }: { group: G; onLeft: () => void; unread: number; onRead: (at: string) => void }) {
+function GroupView({ group, groups, onLeft, unread, onRead }: { group: G; groups: G[]; onLeft: () => void; unread: number; onRead: (at: string) => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [newTask, setNewTask] = useState("");
@@ -251,7 +251,7 @@ function GroupView({ group, onLeft, unread, onRead }: { group: G; onLeft: () => 
         )}
       </div>
 
-      <GroupChat groupId={group.id} myName={me?.display_name ?? "Student"} unread={unread} onRead={onRead} />
+      <GroupChat groupId={group.id} myName={me?.display_name ?? "Student"} groups={groups} unread={unread} onRead={onRead} />
 
       <Button variant="ghost" className="w-full text-destructive" onClick={leave}><LogOut />{group.owner_id === user?.id ? "Delete group" : "Leave group"}</Button>
     </div>
