@@ -2,7 +2,7 @@ import { Link, Navigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   Home, ListChecks, Timer, MessageCircleQuestion, BarChart3, Settings, Bell, CalendarClock,
-  GraduationCap, Users, Sparkles,
+  GraduationCap, Users, Sparkles, Library,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useExams, useNotifications, useProfile, useSessions, useTasks } from "@/lib/data";
@@ -25,6 +25,7 @@ const MORE = [
   { to: "/exams", label: "Exams", icon: GraduationCap },
   { to: "/groups", label: "Study Groups", icon: Users },
   { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/library", label: "Doubt Library", icon: Library },
 ] as const;
 
 export function Shell({ children }: { children: ReactNode }) {

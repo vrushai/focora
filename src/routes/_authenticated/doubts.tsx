@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -20,7 +20,7 @@ import { solveDoubt, type DoubtAnswer } from "@/lib/doubt.functions";
 import { SUBJECTS } from "@/components/Onboarding";
 
 export const Route = createFileRoute("/_authenticated/doubts")({
-  head: () => ({ meta: [{ title: "Ask a Doubt — focora" }, { name: "description", content: "Get clear, grade-appropriate explanations for your study doubts." }, { property: "og:title", content: "Ask a Doubt — focora" }, { property: "og:description", content: "Get clear, grade-appropriate explanations for your study doubts." }] }),
+  head: () => ({ meta: [{ title: "Ask a Doubt — focora" }, { name: "description", content: "Get clear, grade-appropriate explanations for your study doubts." }, { property: "og:title", content: "Ask a Doubt — focora" }, { property: "og:description", content: "Get clear, grade-appropriate explanations for your study doubts." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: DoubtsPage,
 });
 
@@ -81,34 +81,36 @@ function DoubtsPage() {
   const myLib = useQuery({
     queryKey: ["my-library-entries"],
     enabled: !!user,
-    queryFn: async () => (await supabase.from("doubt_library").select("subject,question").eq("user_id", user!.id)).data ?? [],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase.from("doubt_library").select("subject,question").eq("user_id", user.id);
+      if (error) throw error;
+      return data ?? [];
+    },
   });
-  useEffect(() => {
-    if (!myLib.data?.length) return;
-    setShared((p) => {
-      const next = { ...p };
-      for (const e of myLib.data) next[`${e.subject}|${e.question}`] = true;
-      return next;
-    });
-  }, [myLib.data]);
 
   const shareToLibrary = async () => {
-    if (!current || !answer || !shareKey) return;
+    if (!user || !current || !answer || !shareKey) return;
     const { error } = await supabase.from("doubt_library").insert({
       subject: current.subject, topic: current.topic, question: current.question,
-      answer: answer as unknown as Json, author_name: profile?.name || "Student",
+      answer: answer as unknown as Json, author_name: profile?.name || "Student", user_id: user.id,
     });
     if (error) { toast.error("Couldn't share to the library — please try again."); return; }
     setShared((p) => ({ ...p, [shareKey]: true }));
+    await qc.invalidateQueries({ queryKey: ["my-library-entries"] });
     toast.success("Shared! Students can find this in the Doubt Library.");
   };
+
+  const alreadyShared = !!shareKey && (shared[shareKey] || (myLib.data ?? []).some((entry) => `${entry.subject}|${entry.question}` === shareKey));
 
   const s = search.toLowerCase();
   const history = (doubts.data ?? []).filter((d) => !s || [d.question, d.subject, d.topic].some((x) => x.toLowerCase().includes(s)));
 
   return (
     <div>
-      <PageHeader title="Ask a Doubt" subtitle="Understand it, don't just memorise it." />
+      <PageHeader title="Ask a Doubt" subtitle="Understand it, don't just memorise it." action={
+        <Button asChild variant="outline" className="h-10 rounded-xl"><Link to="/library"><Library /> Browse Doubt Library</Link></Button>
+      } />
       <Tabs value={tab} onValueChange={(v) => setTab(v as "ask" | "history")}>
         <TabsList className="mb-4 h-11 rounded-xl">
           <TabsTrigger value="ask" className="rounded-lg">Ask</TabsTrigger>
@@ -153,13 +155,16 @@ function DoubtsPage() {
               <Section icon={Globe} title="Example"><p>{answer.example}</p></Section>
               {answer.common_mistake && <Section icon={Lightbulb} title="Common mistake"><p>{answer.common_mistake}</p></Section>}
               <Section icon={HelpCircle} title="Check your understanding"><p className="font-medium">{answer.check_question}</p></Section>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <Button variant="default" className="rounded-xl" onClick={() => { toast.success("Great! Keep going."); setAnswer(null); setQ(""); setTopic(""); setCurrent(null); }}>I understand</Button>
                 {([["different", "Explain differently"], ["example", "Give an example"], ["simpler", "Make it simpler"]] as const).map(([m, l]) => (
                   <Button key={m} variant="outline" className="rounded-xl" disabled={!!loading} onClick={() => ask(m)}>
                     {loading === m && <Loader2 className="animate-spin" />}{l}
                   </Button>
                 ))}
+                {user && current && <Button variant="outline" className="rounded-xl" disabled={alreadyShared || loading !== null || myLib.isLoading} onClick={shareToLibrary}>
+                  <Library className="size-4" />{alreadyShared ? "Shared to Library" : "Share to Library"}
+                </Button>}
               </div>
             </div>
           )}
